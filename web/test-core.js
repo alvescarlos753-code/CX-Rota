@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');const C=require('./core.js');let n=0;const near=(a,b)=>{n++;assert.ok(Math.abs(a-b)<1e-8,`${a} != ${b}`)};const ok=(a)=>{n++;assert.ok(a)};
+const v={id:'x',name:'Moto alugada',type:'rented',period:'weekly',rent:420,workDaysWeek:6,workDaysMonth:26,fuelPrice:6.3,kmPerLiter:35,maintenance:0.12,otherDaily:8,plannedDailyKm:150};const m=C.model(v);near(m.rentalDaily,70);near(m.fuelPerKm,.18);near(m.variablePerKm,.30);near(m.fixedDaily,78);near(m.costPerKm,.82);near(m.breakEven,123);ok(m.complete);
+let ev=C.evaluate({fare:14.5,km:5.2,minutes:14,pickup:true},v,{minKm:1.8,minHour:35});ok(ev.state==='accept');near(ev.fullNet,14.5-5.2*.82);
+ev=C.evaluate({fare:14.5,km:5.2,minutes:14,pickup:false},v,{minKm:1.8,minHour:35});ok(ev.state==='review');
+ev=C.evaluate({fare:5,km:15,minutes:45,pickup:true},v,{minKm:1.8,minHour:35});ok(ev.state==='decline');
+let s=C.session({start:35179,end:35279,uber:110,ninety:90,fuelPaid:30,extras:12,hours:5},v);near(s.km,100);near(s.gross,200);near(s.consumptionFuel,18);near(s.maintenance,12);near(s.rental,70);near(s.expenses,120);near(s.net,80);near(s.perHour,40);near(s.netHour,16);ok(s.complete);ok(s.fuelPaid===30);
+const own={...v,type:'own',rent:0};near(C.model(own).rentalDaily,0);near(C.session({start:0,end:100,uber:100,ninety:0},own).expenses,38);
+const monthly={...v,period:'monthly',rent:1300};near(C.model(monthly).rentalDaily,50);
+const daily={...v,period:'daily',rent:45};near(C.model(daily).rentalDaily,45);
+const missing={...v,fuelPrice:0,kmPerLiter:0};ok(!C.model(missing).complete);ok(C.evaluate({fare:20,km:5,minutes:12,pickup:true},missing,{minKm:1,minHour:1}).state==='review');
+ok(C.validateVehicle({...v,rent:-1}).length>0);ok(C.validateVehicle({...v,workDaysWeek:0}).length>0);ok(C.validateVehicle({...v,plannedDailyKm:0}).length>0);
+ok(C.num('1.234,50')===1234.5);ok(C.num('3,8')===3.8);ok(C.num('')!==C.num(''));
+console.log(`OK: ${n} cenários de rentabilidade, aluguel, jornada e validação.`);

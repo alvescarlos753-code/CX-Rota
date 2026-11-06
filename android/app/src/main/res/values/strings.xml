@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">CX Rota</string>
+    <string name="accessibility_service_description">Lê somente os textos de ofertas exibidos no Uber Driver ou 99 Motorista, após sua autorização, para calcular valores por km e hora. Não aceita corridas nem envia dados para servidores.</string>
+</resources>
