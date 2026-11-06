@@ -18,7 +18,7 @@ permissions:
 jobs:
   test-and-build:
     name: Testar motor e compilar APK debug
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     defaults:
       run:
@@ -26,11 +26,13 @@ jobs:
     steps:
       - name: Checkout do projeto
         uses: actions/checkout@v4
+
       - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Validar cálculos e extrator de ofertas
         shell: bash
         run: |
@@ -43,16 +45,32 @@ jobs:
             tests/EngineTest.java tests/CostModelTest.java
           java -cp tests/build EngineTest
           java -cp tests/build CostModelTest
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-      - name: Instalar Android API 35
-        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
+
+      # O runner já possui o Android SDK; evitamos a action que tenta instalar
+      # o pacote obsoleto "tools" e causa "Failed to find package 'tools'".
+      - name: Preparar Android SDK e API 35
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "Android SDK: $SDK_ROOT"
+          if command -v sdkmanager >/dev/null 2>&1; then
+            SDKMANAGER="$(command -v sdkmanager)"
+          else
+            SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          fi
+          test -n "$SDKMANAGER" && test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install 'platforms;android-35' 'build-tools;35.0.0'
+
       - name: Configurar Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+
       - name: Gerar APK de debug
         run: gradle :app:assembleDebug --no-daemon --stacktrace
+
       - name: Publicar arquivo instalável (artefato)
         if: success()
         uses: actions/upload-artifact@v4
@@ -64,7 +82,7 @@ jobs:
 
   web-tests:
     name: Testar simulador web premium
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
